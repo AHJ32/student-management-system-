@@ -11,6 +11,16 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 
 public class StudentManagementSystem extends JFrame implements ActionListener {
+    // Database configuration
+    private static final String DB_HOST = "localhost:3306";
+    private static final String DB_NAME = "student_management";
+    private static final String DB_URL = "jdbc:mysql://" + DB_HOST + "/" + DB_NAME + "?useSSL=false";
+    private static final String DB_ROOT_URL = "jdbc:mysql://" + DB_HOST + "/?useSSL=false";
+    private static final String DB_USER = "root";
+    private static final String DB_PASSWORD = "";
+    private Connection connection;
+    
+    // UI Components
     JLabel jtitle;
     JLabel studentName, studentID, studentGrade, dobLabel, genderLabel, contactLabel, emailLabel;
     JTextField jstudentName, jstudentID, jstudentGrade, dobField, contactField, emailField, searchField;
@@ -20,17 +30,12 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
     JTable studentTable;
     DefaultTableModel tableModel;
 
-    private static final String DB_URL = "jdbc:mysql://localhost:3306/student";
-    private static final String DB_USER = "root";
-    private static final String DB_PASSWORD = "user";
-    private Connection connection;
-
     public StudentManagementSystem() {
         setTitle("Student Management System by Group 5");
         setLayout(null);
         setSize(1000, 600);
-        setVisible(true);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null); // Center the window
 
         jtitle = new JLabel("STUDENT MANAGEMENT SYSTEM");
         jtitle.setBounds(250, 10, 700, 50);
@@ -102,19 +107,19 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
 
         add(jtitle);
         add(studentName);
-        add(studentID);
-        add(studentGrade);
-        add(dobLabel);
-        add(genderLabel);
-        add(contactLabel);
-        add(emailLabel);
         add(jstudentName);
+        add(studentID);
         add(jstudentID);
+        add(studentGrade);
         add(jstudentGrade);
+        add(dobLabel);
         add(dobField);
+        add(genderLabel);
         add(maleRadio);
         add(femaleRadio);
+        add(contactLabel);
         add(contactField);
+        add(emailLabel);
         add(emailField);
         add(addStudent);
         add(reset);
@@ -135,8 +140,19 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
         deleteRecord.addActionListener(this);
         searchButton.addActionListener(this);
 
-        connectToDatabase();
-        loadStudentDataFromDatabase();
+        // Initialize database connection and load data
+        if (connectToDatabase()) {
+            loadStudentDataFromDatabase();
+        } else {
+            JOptionPane.showMessageDialog(this, 
+                "Failed to connect to database. The application will now exit.",
+                "Fatal Error", 
+                JOptionPane.ERROR_MESSAGE);
+            System.exit(1);
+        }
+        
+        // Make the window visible after all components are added
+        setVisible(true);
     }
 
     public void actionPerformed(ActionEvent e) {
@@ -251,12 +267,80 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
         }
     }
 
-    private void connectToDatabase() {
+    private boolean connectToDatabase() {
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
-            connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-        } catch (ClassNotFoundException | SQLException e) {
+            
+            // First try to connect to the database
+            try {
+                connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+                return true;
+            } catch (SQLException e) {
+                // If database doesn't exist, create it
+                if (e.getMessage().contains("Unknown database")) {
+                    if (createDatabase()) {
+                        connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+                        createTables();
+                        return true;
+                    }
+                }
+                throw e; // Re-throw if it's a different error
+            }
+        } catch (ClassNotFoundException e) {
+            JOptionPane.showMessageDialog(this, 
+                "MySQL JDBC Driver not found. Make sure it's in your classpath.",
+                "Database Error", 
+                JOptionPane.ERROR_MESSAGE);
+            return false;
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, 
+                "Database Error: " + e.getMessage() + 
+                "\nMake sure MySQL server is running and credentials are correct.",
+                "Database Error", 
+                JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+    }
+    
+    private boolean createDatabase() {
+        try (Connection conn = DriverManager.getConnection(DB_ROOT_URL, DB_USER, DB_PASSWORD);
+             java.sql.Statement stmt = conn.createStatement()) {
+            
+            // Create database if not exists
+            stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + DB_NAME);
+            return true;
+            
+        } catch (SQLException e) {
             e.printStackTrace();
+            JOptionPane.showMessageDialog(this, 
+                "Failed to create database: " + e.getMessage(),
+                "Database Error", 
+                JOptionPane.ERROR_MESSAGE);
+            return false;
+        }
+    }
+    
+    private void createTables() {
+        String createTableSQL = "CREATE TABLE IF NOT EXISTS students (\n" +
+            "    id INT AUTO_INCREMENT PRIMARY KEY,\n" +
+            "    student_name VARCHAR(100) NOT NULL,\n" +
+            "    student_id VARCHAR(50) NOT NULL UNIQUE,\n" +
+            "    student_grade VARCHAR(10) NOT NULL,\n" +
+            "    dob DATE NOT NULL,\n" +
+            "    gender ENUM('Male', 'Female') NOT NULL,\n" +
+            "    contact VARCHAR(20) NOT NULL,\n" +
+            "    email VARCHAR(100) NOT NULL UNIQUE,\n" +
+            "    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n" +
+            ")";
+            
+        try (java.sql.Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate(createTableSQL);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, 
+                "Failed to create table: " + e.getMessage(),
+                "Database Error", 
+                JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -286,26 +370,39 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
     }
 
     private void loadStudentDataFromDatabase() {
+        if (connection == null) {
+            JOptionPane.showMessageDialog(this, 
+                "Not connected to database. Please check your database settings.",
+                "Database Error", 
+                JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         try {
             String selectQuery = "SELECT student_name, student_id, student_grade, DATE_FORMAT(dob, '%d-%m-%Y'), gender, contact, email FROM students";
-            PreparedStatement preparedStatement = connection.prepareStatement(selectQuery);
-            ResultSet resultSet = preparedStatement.executeQuery();
+            try (PreparedStatement preparedStatement = connection.prepareStatement(selectQuery);
+                 ResultSet resultSet = preparedStatement.executeQuery()) {
+                
+                tableModel.setRowCount(0); // Clear existing data
+                
+                while (resultSet.next()) {
+                    String name = resultSet.getString(1);
+                    String id = resultSet.getString(2);
+                    String grade = resultSet.getString(3);
+                    String dob = resultSet.getString(4);
+                    String gender = resultSet.getString(5);
+                    String contact = resultSet.getString(6);
+                    String email = resultSet.getString(7);
 
-            while (resultSet.next()) {
-                String name = resultSet.getString(1);
-                String id = resultSet.getString(2);
-                String grade = resultSet.getString(3);
-                String dob = resultSet.getString(4);
-                String gender = resultSet.getString(5);
-                String contact = resultSet.getString(6);
-                String email = resultSet.getString(7);
-
-                String[] data = {name, id, grade, dob, gender, contact, email};
-                tableModel.addRow(data);
+                    String[] data = {name, id, grade, dob, gender, contact, email};
+                    tableModel.addRow(data);
+                }
             }
-
         } catch (SQLException e) {
-            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, 
+                "Error loading student data: " + e.getMessage(),
+                "Database Error", 
+                JOptionPane.ERROR_MESSAGE);
         }
     }
     private void deleteStudentData(String studentID) {
