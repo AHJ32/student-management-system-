@@ -22,11 +22,12 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
     
     // UI Components
     JLabel jtitle;
-    JLabel studentName, studentID, studentGrade, dobLabel, genderLabel, contactLabel, emailLabel;
-    JTextField jstudentName, jstudentID, jstudentGrade, dobField, contactField, emailField, searchField;
+    JLabel studentName, studentID, departmentLabel, semesterLabel, genderLabel, contactLabel, emailLabel;
+    JTextField jstudentName, jstudentID, contactField, emailField, searchField;
+    JComboBox<String> departmentCombo, semesterCombo;
     JRadioButton maleRadio, femaleRadio;
     ButtonGroup genderGroup;
-    JButton addStudent, reset, deleteRecord, searchButton;
+    JButton addStudent, reset, deleteRecord, searchButton, editProfileButton;
     JTable studentTable;
     DefaultTableModel tableModel;
 
@@ -47,16 +48,16 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
         studentID = new JLabel("Student ID");
         studentID.setBounds(50, 120, 150, 30);
 
-        studentGrade = new JLabel("Student Grade");
-        studentGrade.setBounds(50, 160, 150, 30);
+        departmentLabel = new JLabel("Department");
+        departmentLabel.setBounds(50, 160, 150, 30);
 
-        dobLabel = new JLabel("Date of Birth");
-        dobLabel.setBounds(50, 200, 150, 30);
+        semesterLabel = new JLabel("Semester");
+        semesterLabel.setBounds(50, 200, 150, 30);
 
         genderLabel = new JLabel("Gender");
         genderLabel.setBounds(50, 240, 150, 30);
 
-        contactLabel = new JLabel("Contact Name");
+        contactLabel = new JLabel("Contact Number");
         contactLabel.setBounds(50, 280, 150, 30);
 
         emailLabel = new JLabel("Email");
@@ -68,11 +69,15 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
         jstudentID = new JTextField();
         jstudentID.setBounds(200, 120, 200, 30);
 
-        jstudentGrade = new JTextField();
-        jstudentGrade.setBounds(200, 160, 200, 30);
+        // Department dropdown
+        String[] departments = {"Computer", "Civil", "Mechanical", "Architecture", "Electrical"};
+        departmentCombo = new JComboBox<>(departments);
+        departmentCombo.setBounds(200, 160, 200, 30);
 
-        dobField = new JTextField();
-        dobField.setBounds(200, 200, 200, 30);
+        // Semester dropdown
+        String[] semesters = {"1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"};
+        semesterCombo = new JComboBox<>(semesters);
+        semesterCombo.setBounds(200, 200, 200, 30);
 
         maleRadio = new JRadioButton("Male");
         maleRadio.setBounds(200, 240, 80, 30);
@@ -98,6 +103,9 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
 
         deleteRecord = new JButton("Delete Record");
         deleteRecord.setBounds(650, 250, 150, 30);
+        
+        editProfileButton = new JButton("Edit Profile");
+        editProfileButton.setBounds(650, 300, 150, 30);
 
         searchField = new JTextField();
         searchField.setBounds(50, 360, 300, 30);
@@ -110,10 +118,10 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
         add(jstudentName);
         add(studentID);
         add(jstudentID);
-        add(studentGrade);
-        add(jstudentGrade);
-        add(dobLabel);
-        add(dobField);
+        add(departmentLabel);
+        add(departmentCombo);
+        add(semesterLabel);
+        add(semesterCombo);
         add(genderLabel);
         add(maleRadio);
         add(femaleRadio);
@@ -124,13 +132,21 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
         add(addStudent);
         add(reset);
         add(deleteRecord);
+        add(editProfileButton);
         add(searchField);
         add(searchButton);
 
-        String[] columnNames = {"Student Name", "Student ID", "Student Grade", "Date of Birth", "Gender", "Contact Name", "Email"};
+        String[] columnNames = {"Student Name", "Student ID", "Department", "Semester", "Gender", "Contact Name", "Email"};
         tableModel = new DefaultTableModel(columnNames, 0);
 
-        studentTable = new JTable(tableModel);
+        studentTable = new JTable(tableModel) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                // Make all cells non-editable
+                return false;
+            }
+        };
+        studentTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         JScrollPane scrollPane = new JScrollPane(studentTable);
         scrollPane.setBounds(50, 400, 860, 150);
         add(scrollPane);
@@ -139,6 +155,7 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
         reset.addActionListener(this);
         deleteRecord.addActionListener(this);
         searchButton.addActionListener(this);
+        editProfileButton.addActionListener(this);
 
         // Initialize database connection and load data
         if (connectToDatabase()) {
@@ -159,44 +176,40 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
         if (e.getSource() == addStudent) {
             String name = jstudentName.getText();
             String id = jstudentID.getText();
-            String grade = jstudentGrade.getText();
-            String dob = dobField.getText();
+            String department = (String) departmentCombo.getSelectedItem();
+            String semester = (String) semesterCombo.getSelectedItem();
             String contact = contactField.getText();
             String email = emailField.getText();
             String gender = maleRadio.isSelected() ? "Male" : "Female";
 
-            if (name.isEmpty() || grade.isEmpty() || dob.isEmpty() || contact.isEmpty() || email.isEmpty()) {
+            if (name.isEmpty() || contact.isEmpty() || email.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Please fill in all fields.", "Error", JOptionPane.ERROR_MESSAGE);
             } else if (!isValidEmail(email)) {
                 JOptionPane.showMessageDialog(this, "Invalid email address.", "Error", JOptionPane.ERROR_MESSAGE);
-            } else if (!isValidDate(dob)) {
-                JOptionPane.showMessageDialog(this, "Invalid date of birth. Use the format 'dd-MM-yyyy'.", "Error", JOptionPane.ERROR_MESSAGE);
-            } else if (!isValidGrade(grade)) {
-                JOptionPane.showMessageDialog(this, "Invalid student grade. It should be a number.", "Error", JOptionPane.ERROR_MESSAGE);
             } else if (!isNumeric(id)) {
                 JOptionPane.showMessageDialog(this, "Invalid student ID. It should be a number.", "Error", JOptionPane.ERROR_MESSAGE);
             } else if (!isValidContactNumber(contact)) {
                 JOptionPane.showMessageDialog(this, "Invalid contact number. It should be numeric.", "Error", JOptionPane.ERROR_MESSAGE);
             } else {
-                String[] data = {name, id, grade, dob, gender, contact, email};
+                String[] data = {name, id, department, semester, gender, contact, email};
                 tableModel.addRow(data);
 
                 jstudentName.setText("");
                 jstudentID.setText("");
-                jstudentGrade.setText("");
-                dobField.setText("");
+                departmentCombo.setSelectedIndex(0);
+                semesterCombo.setSelectedIndex(0);
                 genderGroup.clearSelection();
                 contactField.setText("");
                 emailField.setText("");
-                insertStudentData(name, id, grade, dob, gender, contact, email);
+                insertStudentData(name, id, department, semester, gender, contact, email);
             }
         }
 
         if (e.getSource() == reset) {
             jstudentName.setText("");
             jstudentID.setText("");
-            jstudentGrade.setText("");
-            dobField.setText("");
+            departmentCombo.setSelectedIndex(0);
+            semesterCombo.setSelectedIndex(0);
             genderGroup.clearSelection();
             contactField.setText("");
             emailField.setText("");
@@ -223,205 +236,29 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
                     break;
                 }
             }
+        } else if (e.getSource() == editProfileButton) {
+            int selectedRow = studentTable.getSelectedRow();
+            if (selectedRow >= 0) {
+                editStudentProfile(selectedRow);
+            } else {
+                JOptionPane.showMessageDialog(this, 
+                    "Please select a student to edit.", 
+                    "No Selection", 
+                    JOptionPane.WARNING_MESSAGE);
+            }
         }
     }
-
-    private boolean isValidEmail(String email) {
+    
+    public boolean isValidEmail(String email) {
         return email.matches("^[A-Za-z0-9+_.-]+@(.+)$");
     }
-
-    private boolean isValidDate(String date) {
-        try {
-            SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
-            sdf.setLenient(false);
-            sdf.parse(date);
-            return true;
-        } catch (ParseException e) {
-            return false;
-        }
-    }
-
-    private boolean isValidGrade(String grade) {
-        try {
-            Double.parseDouble(grade);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
-
-    private boolean isValidStudentID(String id) {
-        return id.matches("^[A-Za-z0-9]+$");
-    }
-
-    private boolean isValidContactNumber(String contact) {
-        return contact.matches("^[0-9]+$");
-    }
-
+    
     private boolean isNumeric(String str) {
-        try {
-            Integer.parseInt(str);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
-
-    private boolean connectToDatabase() {
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            
-            // First try to connect to the database
-            try {
-                connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-                return true;
-            } catch (SQLException e) {
-                // If database doesn't exist, create it
-                if (e.getMessage().contains("Unknown database")) {
-                    if (createDatabase()) {
-                        connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-                        createTables();
-                        return true;
-                    }
-                }
-                throw e; // Re-throw if it's a different error
-            }
-        } catch (ClassNotFoundException e) {
-            JOptionPane.showMessageDialog(this, 
-                "MySQL JDBC Driver not found. Make sure it's in your classpath.",
-                "Database Error", 
-                JOptionPane.ERROR_MESSAGE);
-            return false;
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, 
-                "Database Error: " + e.getMessage() + 
-                "\nMake sure MySQL server is running and credentials are correct.",
-                "Database Error", 
-                JOptionPane.ERROR_MESSAGE);
-            return false;
-        }
+        return str.matches("\\d+");
     }
     
-    private boolean createDatabase() {
-        try (Connection conn = DriverManager.getConnection(DB_ROOT_URL, DB_USER, DB_PASSWORD);
-             java.sql.Statement stmt = conn.createStatement()) {
-            
-            // Create database if not exists
-            stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS " + DB_NAME);
-            return true;
-            
-        } catch (SQLException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, 
-                "Failed to create database: " + e.getMessage(),
-                "Database Error", 
-                JOptionPane.ERROR_MESSAGE);
-            return false;
-        }
-    }
-    
-    private void createTables() {
-        String createTableSQL = "CREATE TABLE IF NOT EXISTS students (\n" +
-            "    id INT AUTO_INCREMENT PRIMARY KEY,\n" +
-            "    student_name VARCHAR(100) NOT NULL,\n" +
-            "    student_id VARCHAR(50) NOT NULL UNIQUE,\n" +
-            "    student_grade VARCHAR(10) NOT NULL,\n" +
-            "    dob DATE NOT NULL,\n" +
-            "    gender ENUM('Male', 'Female') NOT NULL,\n" +
-            "    contact VARCHAR(20) NOT NULL,\n" +
-            "    email VARCHAR(100) NOT NULL UNIQUE,\n" +
-            "    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n" +
-            ")";
-            
-        try (java.sql.Statement stmt = connection.createStatement()) {
-            stmt.executeUpdate(createTableSQL);
-        } catch (SQLException e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, 
-                "Failed to create table: " + e.getMessage(),
-                "Database Error", 
-                JOptionPane.ERROR_MESSAGE);
-        }
-    }
-
-    private void insertStudentData(String name, String id, String grade, String dob, String gender, String contact, String email) {
-        String insertQuery = "INSERT INTO students (student_name, student_id, student_grade, dob, gender, contact, email) VALUES (?, ?, ?, STR_TO_DATE(?, '%d-%m-%Y'), ?, ?, ?)";
-
-        try {
-            PreparedStatement preparedStatement = connection.prepareStatement(insertQuery);
-            preparedStatement.setString(1, name);
-            preparedStatement.setString(2, id);
-            preparedStatement.setString(3, grade);
-            preparedStatement.setString(4, dob);
-            preparedStatement.setString(5, gender);
-            preparedStatement.setString(6, contact);
-            preparedStatement.setString(7, email);
-
-            int rowsAffected = preparedStatement.executeUpdate();
-
-            if (rowsAffected > 0) {
-                JOptionPane.showMessageDialog(this, "Student data inserted successfully", "Success", JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                JOptionPane.showMessageDialog(this, "Failed to insert student data", "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void loadStudentDataFromDatabase() {
-        if (connection == null) {
-            JOptionPane.showMessageDialog(this, 
-                "Not connected to database. Please check your database settings.",
-                "Database Error", 
-                JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        try {
-            String selectQuery = "SELECT student_name, student_id, student_grade, DATE_FORMAT(dob, '%d-%m-%Y'), gender, contact, email FROM students";
-            try (PreparedStatement preparedStatement = connection.prepareStatement(selectQuery);
-                 ResultSet resultSet = preparedStatement.executeQuery()) {
-                
-                tableModel.setRowCount(0); // Clear existing data
-                
-                while (resultSet.next()) {
-                    String name = resultSet.getString(1);
-                    String id = resultSet.getString(2);
-                    String grade = resultSet.getString(3);
-                    String dob = resultSet.getString(4);
-                    String gender = resultSet.getString(5);
-                    String contact = resultSet.getString(6);
-                    String email = resultSet.getString(7);
-
-                    String[] data = {name, id, grade, dob, gender, contact, email};
-                    tableModel.addRow(data);
-                }
-            }
-        } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, 
-                "Error loading student data: " + e.getMessage(),
-                "Database Error", 
-                JOptionPane.ERROR_MESSAGE);
-        }
-    }
-    private void deleteStudentData(String studentID) {
-        String deleteQuery = "DELETE FROM students WHERE student_id = ?";
-        
-        try {
-            PreparedStatement preparedStatement = connection.prepareStatement(deleteQuery);
-            preparedStatement.setString(1, studentID);
-            
-            int rowsAffected = preparedStatement.executeUpdate();
-            
-            if (rowsAffected > 0) {
-                JOptionPane.showMessageDialog(this, "Student data deleted successfully", "Success", JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                JOptionPane.showMessageDialog(this, "Failed to delete student data", "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+    private boolean isValidContactNumber(String contact) {
+        return contact.matches("^\\d+$");
     }
     
 
@@ -434,10 +271,335 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
             e.printStackTrace();
         }
     }
+    
+    private boolean connectToDatabase() {
+        try {
+            connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    private void loadStudentDataFromDatabase() {
+        try (PreparedStatement stmt = connection.prepareStatement("SELECT * FROM students LIMIT 1");
+             ResultSet rs = stmt.executeQuery()) {
+            
+            // Get metadata to discover column names
+            java.sql.ResultSetMetaData metaData = rs.getMetaData();
+            int columnCount = metaData.getColumnCount();
+            
+            // Print column names for debugging
+            System.out.println("Available columns in 'students' table:");
+            for (int i = 1; i <= columnCount; i++) {
+                System.out.println(i + ". " + metaData.getColumnName(i));
+            }
+            
+            // Now fetch all data with the correct column names
+            try (PreparedStatement stmtAll = connection.prepareStatement("SELECT * FROM students");
+                 ResultSet rsAll = stmtAll.executeQuery()) {
+                
+                while (rsAll.next()) {
+                    // Use the actual column names from your database
+                    String name = rsAll.getString("student_name");
+                    String id = rsAll.getString("student_id");
+                    String department = rsAll.getString("department");
+                    String semester = rsAll.getString("semester");
+                    String gender = rsAll.getString("gender");
+                    String contact = rsAll.getString("contact");
+                    String email = rsAll.getString("email");
+                    
+                    tableModel.addRow(new Object[]{name, id, department, semester, gender, contact, email});
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, 
+                "Error loading student data: " + e.getMessage(), 
+                "Database Error", 
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    private void insertStudentData(String name, String id, String department, String semester, 
+                                 String gender, String contact, String email) {
+        String sql = "INSERT INTO students (student_name, student_id, department, semester, gender, contact, email) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, name);
+            pstmt.setString(2, id);
+            pstmt.setString(3, department);
+            pstmt.setString(4, semester);
+            pstmt.setString(5, gender);
+            pstmt.setString(6, contact);
+            pstmt.setString(7, email);
+            
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, 
+                "Error saving student data: " + e.getMessage(), 
+                "Database Error", 
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    private void editStudentProfile(int rowIndex) {
+        // Get student data from the selected row
+        String id = tableModel.getValueAt(rowIndex, 1).toString();
+        
+        // Create a dialog for editing
+        JDialog editDialog = new JDialog(this, "Edit Student Profile", true);
+        editDialog.setLayout(new GridLayout(0, 2, 5, 5));
+        editDialog.setSize(400, 300);
+        editDialog.setLocationRelativeTo(this);
+        
+        // Create form fields with current data
+        JTextField nameField = new JTextField(tableModel.getValueAt(rowIndex, 0).toString());
+        JTextField idField = new JTextField(id);
+        // Allow editing ID since it's not a database primary key
+        JComboBox<String> deptCombo = new JComboBox<>(new String[]{"Computer", "Civil", "Mechanical", "Architecture", "Electrical"});
+        deptCombo.setSelectedItem(tableModel.getValueAt(rowIndex, 2).toString());
+        
+        JComboBox<String> semCombo = new JComboBox<>(new String[]{"1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"});
+        semCombo.setSelectedItem(tableModel.getValueAt(rowIndex, 3).toString());
+        
+        JRadioButton maleRadio = new JRadioButton("Male");
+        JRadioButton femaleRadio = new JRadioButton("Female");
+        ButtonGroup genderGroup = new ButtonGroup();
+        genderGroup.add(maleRadio);
+        genderGroup.add(femaleRadio);
+        String gender = tableModel.getValueAt(rowIndex, 4).toString();
+        if (gender.equals("Male")) maleRadio.setSelected(true);
+        else femaleRadio.setSelected(true);
+        
+        JTextField contactField = new JTextField(tableModel.getValueAt(rowIndex, 5).toString());
+        JTextField emailField = new JTextField(tableModel.getValueAt(rowIndex, 6).toString());
+        
+        // Add components to dialog
+        editDialog.add(new JLabel("Name:"));
+        editDialog.add(nameField);
+        editDialog.add(new JLabel("ID:"));
+        editDialog.add(idField);
+        editDialog.add(new JLabel("Department:"));
+        editDialog.add(deptCombo);
+        editDialog.add(new JLabel("Semester:"));
+        editDialog.add(semCombo);
+        editDialog.add(new JLabel("Gender:"));
+        JPanel genderPanel = new JPanel();
+        genderPanel.add(maleRadio);
+        genderPanel.add(femaleRadio);
+        editDialog.add(genderPanel);
+        editDialog.add(new JLabel("Contact:"));
+        editDialog.add(contactField);
+        editDialog.add(new JLabel("Email:"));
+        editDialog.add(emailField);
+        
+        // Add save and cancel buttons
+        JButton saveButton = new JButton("Save");
+        JButton cancelButton = new JButton("Cancel");
+        
+        saveButton.addActionListener(ae -> {
+            String newId = idField.getText().trim();
+            
+            // Validate the new ID
+            if (newId.isEmpty()) {
+                JOptionPane.showMessageDialog(editDialog, 
+                    "Student ID cannot be empty.", 
+                    "Validation Error", 
+                    JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            if (!isNumeric(newId)) {
+                JOptionPane.showMessageDialog(editDialog, 
+                    "Student ID must be a number.", 
+                    "Validation Error", 
+                    JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            // Check if ID is being changed to a value that already exists
+            if (!newId.equals(id)) {
+                try (PreparedStatement stmt = connection.prepareStatement(
+                        "SELECT COUNT(*) FROM students WHERE student_id = ?")) {
+                    stmt.setString(1, newId);
+                    try (ResultSet rs = stmt.executeQuery()) {
+                        if (rs.next() && rs.getInt(1) > 0) {
+                            JOptionPane.showMessageDialog(editDialog, 
+                                "A student with this ID already exists.", 
+                                "Duplicate ID", 
+                                JOptionPane.ERROR_MESSAGE);
+                            return;
+                        }
+                    }
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(editDialog, 
+                        "Error checking student ID: " + ex.getMessage(), 
+                        "Database Error", 
+                        JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            }
+            
+            // If ID was changed, we need to delete the old record and insert a new one
+            if (!newId.equals(id)) {
+                try {
+                    // Start a transaction
+                    connection.setAutoCommit(false);
+                    
+                    // Delete the old record
+                    deleteStudentData(id);
+                    
+                    // Insert a new record with the updated ID
+                    insertStudentData(
+                        nameField.getText(),
+                        newId,
+                        deptCombo.getSelectedItem().toString(),
+                        semCombo.getSelectedItem().toString(),
+                        maleRadio.isSelected() ? "Male" : "Female",
+                        contactField.getText(),
+                        emailField.getText()
+                    );
+                    
+                    connection.commit();
+                } catch (SQLException ex) {
+                    try {
+                        connection.rollback();
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(editDialog, 
+                        "Error updating student: " + ex.getMessage(), 
+                        "Database Error", 
+                        JOptionPane.ERROR_MESSAGE);
+                    return;
+                } finally {
+                    try {
+                        connection.setAutoCommit(true);
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                }
+                
+                // Update the table with the new ID
+                tableModel.setValueAt(newId, rowIndex, 1);
+            } else {
+                // Just update the existing record if ID wasn't changed
+                updateStudentInDatabase(
+                    id,
+                    nameField.getText(),
+                    deptCombo.getSelectedItem().toString(),
+                    semCombo.getSelectedItem().toString(),
+                    maleRadio.isSelected() ? "Male" : "Female",
+                    contactField.getText(),
+                    emailField.getText()
+                );
+            }
+            
+            // Update the rest of the table data
+            tableModel.setValueAt(nameField.getText(), rowIndex, 0);
+            tableModel.setValueAt(deptCombo.getSelectedItem().toString(), rowIndex, 2);
+            tableModel.setValueAt(semCombo.getSelectedItem().toString(), rowIndex, 3);
+            tableModel.setValueAt(maleRadio.isSelected() ? "Male" : "Female", rowIndex, 4);
+            tableModel.setValueAt(contactField.getText(), rowIndex, 5);
+            tableModel.setValueAt(emailField.getText(), rowIndex, 6);
+            
+            editDialog.dispose();
+        });
+        
+        cancelButton.addActionListener(ae -> editDialog.dispose());
+        
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(saveButton);
+        buttonPanel.add(cancelButton);
+        
+        editDialog.add(new JLabel()); // Empty cell for layout
+        editDialog.add(buttonPanel);
+        
+        editDialog.setVisible(true);
+    }
+    
+    private void updateStudentInDatabase(String id, String name, String department, 
+                                       String semester, String gender, String contact, String email) {
+        String sql = "UPDATE students SET student_name = ?, department = ?, semester = ?, " +
+                    "gender = ?, contact = ?, email = ? WHERE student_id = ?";
+        
+        try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+            pstmt.setString(1, name);
+            pstmt.setString(2, department);
+            pstmt.setString(3, semester);
+            pstmt.setString(4, gender);
+            pstmt.setString(5, contact);
+            pstmt.setString(6, email);
+            pstmt.setString(7, id);
+            
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, 
+                "Error updating student: " + e.getMessage(), 
+                "Database Error", 
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    private void deleteStudentData(String studentId) {
+        try (PreparedStatement pstmt = connection.prepareStatement("DELETE FROM students WHERE student_id = ?")) {
+            pstmt.setString(1, studentId);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, 
+                "Error deleting student: " + e.getMessage(), 
+                "Database Error", 
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    {
+        // Add shutdown hook to properly close database connection
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try {
+                closeDatabaseConnection();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }));
+    }
 
     public static void main(String[] args) {
+        // Set look and feel to system default
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        // Load MySQL JDBC Driver
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
+            JOptionPane.showMessageDialog(null, 
+                "MySQL JDBC Driver not found. Please ensure it's in your classpath.",
+                "Driver Error", 
+                JOptionPane.ERROR_MESSAGE);
+            System.exit(1);
+        }
+        
+        // Start the application
         SwingUtilities.invokeLater(() -> {
-            new StudentManagementSystem();
+            StudentManagementSystem app = new StudentManagementSystem();
+            // Ensure database connection is closed when window is closed
+            app.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    app.closeDatabaseConnection();
+                }
+            });
         });
     }
 }
