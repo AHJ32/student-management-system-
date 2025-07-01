@@ -28,8 +28,9 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
     JRadioButton maleRadio, femaleRadio;
     ButtonGroup genderGroup;
     JButton addStudent, reset, deleteRecord, searchButton, editProfileButton;
-    JTable studentTable;
-    DefaultTableModel tableModel;
+    private JTable studentTable;
+    private DefaultTableModel tableModel;
+    private JButton backButton;
 
     public StudentManagementSystem() {
         setTitle("Student Management System by Group 5");
@@ -107,6 +108,10 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
         editProfileButton = new JButton("Edit Profile");
         editProfileButton.setBounds(650, 300, 150, 30);
 
+        backButton = new JButton("Back to Home");
+        backButton.setBounds(50, 500, 150, 30);
+        backButton.addActionListener(this);
+
         searchField = new JTextField();
         searchField.setBounds(50, 360, 300, 30);
 
@@ -133,6 +138,7 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
         add(reset);
         add(deleteRecord);
         add(editProfileButton);
+        add(backButton);
         add(searchField);
         add(searchButton);
 
@@ -173,7 +179,15 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
     }
 
     public void actionPerformed(ActionEvent e) {
-        if (e.getSource() == addStudent) {
+        if (e.getSource() == backButton) {
+            // Return to home page
+            SwingUtilities.invokeLater(() -> {
+                HomePage homePage = new HomePage();
+                homePage.setVisible(true);
+                this.dispose();
+            });
+            return;
+        } else if (e.getSource() == addStudent) {
             String name = jstudentName.getText();
             String id = jstudentID.getText();
             String department = (String) departmentCombo.getSelectedItem();
@@ -572,34 +586,10 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
     }
 
     public static void main(String[] args) {
-        // Set look and feel to system default
-        try {
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        
-        // Load MySQL JDBC Driver
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-        } catch (ClassNotFoundException e) {
-            JOptionPane.showMessageDialog(null, 
-                "MySQL JDBC Driver not found. Please ensure it's in your classpath.",
-                "Driver Error", 
-                JOptionPane.ERROR_MESSAGE);
-            System.exit(1);
-        }
-        
-        // Start the application
+        // This is now handled by HomePage
         SwingUtilities.invokeLater(() -> {
-            StudentManagementSystem app = new StudentManagementSystem();
-            // Ensure database connection is closed when window is closed
-            app.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosing(WindowEvent e) {
-                    app.closeDatabaseConnection();
-                }
-            });
+            HomePage homePage = new HomePage();
+            homePage.setVisible(true);
         });
     }
 }

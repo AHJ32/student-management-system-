@@ -170,14 +170,14 @@ public class LoginForm extends JFrame {
         // Close the login window
         this.dispose();
         
-        // Open the Student Management System
+        // Open the Home Page
         try {
-            StudentManagementSystem sms = new StudentManagementSystem();
-            sms.setVisible(true);
+            HomePage homePage = new HomePage();
+            homePage.setVisible(true);
         } catch (Exception e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(null, 
-                "Error opening Student Management System: " + e.getMessage(),
+                "Error opening Home Page: " + e.getMessage(),
                 "Error", 
                 JOptionPane.ERROR_MESSAGE);
             
