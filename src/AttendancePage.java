@@ -8,12 +8,12 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import com.toedter.calendar.JDateChooser;
 
 public class AttendancePage extends JFrame implements ActionListener {
     // Database configuration
@@ -25,12 +25,13 @@ public class AttendancePage extends JFrame implements ActionListener {
     private JButton backButton, saveButton, refreshButton;
     private JTable attendanceTable;
     private DefaultTableModel tableModel;
-    private JComboBox<String> dateCombo, departmentFilter;
+    private JComboBox<String> departmentFilter;
     private JTextField searchField;
     private JLabel summaryLabel;
     private Connection connection;
     private Map<String, Integer> studentIdToDbId = new HashMap<>();
     private TableRowSorter<TableModel> sorter;
+    private JDateChooser dateChooser;
     
     public AttendancePage() {
         setTitle("Student Management System - Attendance");
@@ -61,9 +62,28 @@ public class AttendancePage extends JFrame implements ActionListener {
         
         // Date selection
         JLabel dateLabel = new JLabel("Select Date:");
-        dateCombo = new JComboBox<>();
-        populateDateCombo();
-        dateCombo.addActionListener(e -> loadAttendanceData());
+        dateChooser = new JDateChooser();
+        dateChooser.setDateFormatString("yyyy-MM-dd");
+        dateChooser.setPreferredSize(new Dimension(150, 30));
+        dateChooser.setBackground(Color.WHITE);
+        dateChooser.setFont(new Font("Arial", Font.PLAIN, 14));
+        // Style the editor (the text field inside the date chooser)
+        JTextField dateEditor = ((JTextField) dateChooser.getDateEditor().getUiComponent());
+        dateEditor.setEditable(false);
+        dateEditor.setOpaque(false);
+        dateEditor.setBorder(null);
+        dateEditor.setBackground(new Color(0,0,0,0));
+        dateEditor.setPreferredSize(new Dimension(0, 0));
+        // Style the calendar button
+        for (Component c : dateChooser.getComponents()) {
+            if (c instanceof JButton) {
+                c.setBackground(new Color(70, 130, 180));
+                c.setForeground(Color.WHITE);
+                c.setFont(new Font("Arial", Font.BOLD, 14));
+                ((JButton) c).setBorder(BorderFactory.createLineBorder(new Color(70, 130, 180)));
+            }
+        }
+        dateChooser.addPropertyChangeListener("date", e -> loadAttendanceData());
         
         // Department filter
         JLabel deptLabel = new JLabel("Department:");
@@ -110,7 +130,7 @@ public class AttendancePage extends JFrame implements ActionListener {
         gbc.gridx = 1; gbc.gridy = 0; controlPanel.add(Box.createHorizontalStrut(20), gbc);
         
         gbc.gridx = 2; gbc.gridy = 0; controlPanel.add(dateLabel, gbc);
-        gbc.gridx = 3; gbc.gridy = 0; controlPanel.add(dateCombo, gbc);
+        gbc.gridx = 3; gbc.gridy = 0; controlPanel.add(dateChooser, gbc);
         
         gbc.gridx = 4; gbc.gridy = 0; controlPanel.add(Box.createHorizontalStrut(20), gbc);
         
@@ -245,24 +265,12 @@ public class AttendancePage extends JFrame implements ActionListener {
         }
     }
     
-    private void populateDateCombo() {
-        // Add today and previous 6 days to the combo box
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-        Calendar cal = Calendar.getInstance();
-        
-        dateCombo.removeAllItems();
-        for (int i = 0; i < 7; i++) {
-            dateCombo.addItem(sdf.format(cal.getTime()));
-            cal.add(Calendar.DATE, -1);
-        }
-        
-        // Set default to today
-        dateCombo.setSelectedIndex(0);
-    }
-    
     private void loadAttendanceData() {
-        String selectedDate = (String) dateCombo.getSelectedItem();
+        java.util.Date selectedDate = dateChooser.getDate();
         if (selectedDate == null) return;
+        
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        String date = sdf.format(selectedDate);
         
         try {
             // Clear existing data
@@ -276,7 +284,7 @@ public class AttendancePage extends JFrame implements ActionListener {
                          "ORDER BY s.department, s.name";
             
             PreparedStatement pst = connection.prepareStatement(query);
-            pst.setString(1, selectedDate);
+            pst.setString(1, date);
             ResultSet rs = pst.executeQuery();
             
             // Add rows to table
@@ -302,11 +310,14 @@ public class AttendancePage extends JFrame implements ActionListener {
     }
     
     private void saveAttendance() {
-        String selectedDate = (String) dateCombo.getSelectedItem();
+        java.util.Date selectedDate = dateChooser.getDate();
         if (selectedDate == null) {
             JOptionPane.showMessageDialog(this, "Please select a date first.");
             return;
         }
+        
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        String date = sdf.format(selectedDate);
         
         try {
             connection.setAutoCommit(false);
@@ -325,7 +336,7 @@ public class AttendancePage extends JFrame implements ActionListener {
                 String query = "SELECT id FROM attendance WHERE student_id = ? AND date = ?";
                 try (PreparedStatement pst = connection.prepareStatement(query)) {
                     pst.setString(1, studentDbId);
-                    pst.setString(2, selectedDate);
+                    pst.setString(2, date);
                     try (ResultSet rs = pst.executeQuery()) {
                         if (rs.next()) {
                             // Update existing attendance
@@ -340,7 +351,7 @@ public class AttendancePage extends JFrame implements ActionListener {
                             String insertQuery = "INSERT INTO attendance (student_id, date, status) VALUES (?, ?, ?)";
                             try (PreparedStatement insertPst = connection.prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS)) {
                                 insertPst.setString(1, studentDbId);
-                                insertPst.setString(2, selectedDate);
+                                insertPst.setString(2, date);
                                 insertPst.setString(3, status);
                                 insertPst.executeUpdate();
                                 
