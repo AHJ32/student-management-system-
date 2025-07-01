@@ -40,61 +40,61 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
         setLocationRelativeTo(null); // Center the window
 
         jtitle = new JLabel("STUDENT MANAGEMENT SYSTEM");
-        jtitle.setBounds(250, 10, 700, 50);
+        jtitle.setBounds(250, 25, 700, 50);
         jtitle.setFont(new Font("Comic Sans MS", Font.PLAIN, 30));
 
         studentName = new JLabel("Student Name");
-        studentName.setBounds(50, 80, 150, 30);
+        studentName.setBounds(100, 80, 150, 30);
 
         studentID = new JLabel("Student ID");
-        studentID.setBounds(50, 120, 150, 30);
+        studentID.setBounds(100, 120, 150, 30);
 
         departmentLabel = new JLabel("Department");
-        departmentLabel.setBounds(50, 160, 150, 30);
+        departmentLabel.setBounds(100, 160, 150, 30);
 
         semesterLabel = new JLabel("Semester");
-        semesterLabel.setBounds(50, 200, 150, 30);
+        semesterLabel.setBounds(100, 200, 150, 30);
 
         genderLabel = new JLabel("Gender");
-        genderLabel.setBounds(50, 240, 150, 30);
+        genderLabel.setBounds(100, 240, 150, 30);
 
         contactLabel = new JLabel("Contact Number");
-        contactLabel.setBounds(50, 280, 150, 30);
+        contactLabel.setBounds(100, 280, 150, 30);
 
         emailLabel = new JLabel("Email");
-        emailLabel.setBounds(50, 320, 150, 30);
+        emailLabel.setBounds(100, 320, 150, 30);
 
         jstudentName = new JTextField();
-        jstudentName.setBounds(200, 80, 200, 30);
+        jstudentName.setBounds(250, 80, 200, 30);
 
         jstudentID = new JTextField();
-        jstudentID.setBounds(200, 120, 200, 30);
+        jstudentID.setBounds(250, 120, 200, 30);
 
         // Department dropdown
         String[] departments = {"Computer", "Civil", "Mechanical", "Architecture", "Electrical"};
         departmentCombo = new JComboBox<>(departments);
-        departmentCombo.setBounds(200, 160, 200, 30);
+        departmentCombo.setBounds(250, 160, 200, 30);
 
         // Semester dropdown
         String[] semesters = {"1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th"};
         semesterCombo = new JComboBox<>(semesters);
-        semesterCombo.setBounds(200, 200, 200, 30);
+        semesterCombo.setBounds(250, 200, 200, 30);
 
         maleRadio = new JRadioButton("Male");
-        maleRadio.setBounds(200, 240, 80, 30);
+        maleRadio.setBounds(250, 240, 80, 30);
 
         femaleRadio = new JRadioButton("Female");
-        femaleRadio.setBounds(290, 240, 100, 30);
+        femaleRadio.setBounds(340, 240, 100, 30);
 
         genderGroup = new ButtonGroup();
         genderGroup.add(maleRadio);
         genderGroup.add(femaleRadio);
 
         contactField = new JTextField();
-        contactField.setBounds(200, 280, 200, 30);
+        contactField.setBounds(250, 280, 200, 30);
 
         emailField = new JTextField();
-        emailField.setBounds(200, 320, 200, 30);
+        emailField.setBounds(250, 320, 200, 30);
 
         addStudent = new JButton("Add Student");
         addStudent.setBounds(650, 150, 150, 30);
@@ -109,14 +109,14 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
         editProfileButton.setBounds(650, 300, 150, 30);
 
         backButton = new JButton("Back to Home");
-        backButton.setBounds(50, 500, 150, 30);
+        backButton.setBounds(20, 20, 120, 30);
         backButton.addActionListener(this);
 
         searchField = new JTextField();
-        searchField.setBounds(50, 360, 300, 30);
+        searchField.setBounds(100, 360, 300, 30);
 
         searchButton = new JButton("Search by ID");
-        searchButton.setBounds(360, 360, 150, 30);
+        searchButton.setBounds(410, 360, 150, 30);
 
         add(jtitle);
         add(studentName);
@@ -154,7 +154,7 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
         };
         studentTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         JScrollPane scrollPane = new JScrollPane(studentTable);
-        scrollPane.setBounds(50, 400, 860, 150);
+        scrollPane.setBounds(100, 420, 800, 150);
         add(scrollPane);
 
         addStudent.addActionListener(this);
