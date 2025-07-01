@@ -13,7 +13,7 @@ import java.text.SimpleDateFormat;
 public class StudentManagementSystem extends JFrame implements ActionListener {
     // Database configuration
     private static final String DB_HOST = "localhost:3306";
-    private static final String DB_NAME = "student_management";
+    private static final String DB_NAME = "sms";
     private static final String DB_URL = "jdbc:mysql://" + DB_HOST + "/" + DB_NAME + "?useSSL=false";
     private static final String DB_ROOT_URL = "jdbc:mysql://" + DB_HOST + "/?useSSL=false";
     private static final String DB_USER = "root";
@@ -285,31 +285,31 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
     private void loadStudentDataFromDatabase() {
         try (PreparedStatement stmt = connection.prepareStatement("SELECT * FROM students LIMIT 1");
              ResultSet rs = stmt.executeQuery()) {
-            
+
             // Get metadata to discover column names
             java.sql.ResultSetMetaData metaData = rs.getMetaData();
             int columnCount = metaData.getColumnCount();
-            
+
             // Print column names for debugging
             System.out.println("Available columns in 'students' table:");
             for (int i = 1; i <= columnCount; i++) {
                 System.out.println(i + ". " + metaData.getColumnName(i));
             }
-            
+
             // Now fetch all data with the correct column names
             try (PreparedStatement stmtAll = connection.prepareStatement("SELECT * FROM students");
                  ResultSet rsAll = stmtAll.executeQuery()) {
-                
+
                 while (rsAll.next()) {
                     // Use the actual column names from your database
-                    String name = rsAll.getString("student_name");
-                    String id = rsAll.getString("student_id");
+                    String name = rsAll.getString("name");
+                    String id = rsAll.getString("id");
                     String department = rsAll.getString("department");
                     String semester = rsAll.getString("semester");
                     String gender = rsAll.getString("gender");
                     String contact = rsAll.getString("contact");
                     String email = rsAll.getString("email");
-                    
+
                     tableModel.addRow(new Object[]{name, id, department, semester, gender, contact, email});
                 }
             }
@@ -324,7 +324,7 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
     
     private void insertStudentData(String name, String id, String department, String semester, 
                                  String gender, String contact, String email) {
-        String sql = "INSERT INTO students (student_name, student_id, department, semester, gender, contact, email) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO students (name, id, department, semester, gender, contact, email) VALUES (?, ?, ?, ?, ?, ?, ?)";
         
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, name);
@@ -423,7 +423,7 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
             // Check if ID is being changed to a value that already exists
             if (!newId.equals(id)) {
                 try (PreparedStatement stmt = connection.prepareStatement(
-                        "SELECT COUNT(*) FROM students WHERE student_id = ?")) {
+                        "SELECT COUNT(*) FROM students WHERE id = ?")) {
                     stmt.setString(1, newId);
                     try (ResultSet rs = stmt.executeQuery()) {
                         if (rs.next() && rs.getInt(1) > 0) {
@@ -525,8 +525,8 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
     
     private void updateStudentInDatabase(String id, String name, String department, 
                                        String semester, String gender, String contact, String email) {
-        String sql = "UPDATE students SET student_name = ?, department = ?, semester = ?, " +
-                    "gender = ?, contact = ?, email = ? WHERE student_id = ?";
+        String sql = "UPDATE students SET name = ?, department = ?, semester = ?, " +
+                    "gender = ?, contact = ?, email = ? WHERE id = ?";
         
         try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
             pstmt.setString(1, name);
@@ -548,7 +548,7 @@ public class StudentManagementSystem extends JFrame implements ActionListener {
     }
     
     private void deleteStudentData(String studentId) {
-        try (PreparedStatement pstmt = connection.prepareStatement("DELETE FROM students WHERE student_id = ?")) {
+        try (PreparedStatement pstmt = connection.prepareStatement("DELETE FROM students WHERE id = ?")) {
             pstmt.setString(1, studentId);
             pstmt.executeUpdate();
         } catch (SQLException e) {
