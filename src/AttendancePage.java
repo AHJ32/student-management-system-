@@ -1,14 +1,19 @@
 import javax.swing.*;
 import javax.swing.table.*;
+import javax.swing.event.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 public class AttendancePage extends JFrame implements ActionListener {
     // Database configuration
@@ -68,11 +73,27 @@ public class AttendancePage extends JFrame implements ActionListener {
         
         // Search field
         JLabel searchLabel = new JLabel("Search:");
-        searchField = new JTextField(20);
-        searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
-            public void changedUpdate(javax.swing.event.DocumentEvent e) { filterTable(); }
-            public void removeUpdate(javax.swing.event.DocumentEvent e) { filterTable(); }
-            public void insertUpdate(javax.swing.event.DocumentEvent e) { filterTable(); }
+        searchField = new JTextField();
+        searchField.setFont(new Font("Arial", Font.PLAIN, 14));
+        searchField.setPreferredSize(new Dimension(400, 30));
+        searchField.setBackground(Color.WHITE);
+        searchField.setForeground(Color.BLACK);
+        searchField.setCaretColor(Color.BLACK);
+        searchField.setOpaque(true);
+        searchField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(150, 150, 150), 1),
+                BorderFactory.createEmptyBorder(5, 10, 5, 10) // Padding
+        ));
+        searchField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(180, 180, 180), 1),
+                BorderFactory.createEmptyBorder(5, 10, 5, 10) // Padding inside the field
+        ));
+
+        searchField.setToolTipText("Search by ID, Name, or Department");
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            public void changedUpdate(DocumentEvent e) { filterTable(); }
+            public void removeUpdate(DocumentEvent e) { filterTable(); }
+            public void insertUpdate(DocumentEvent e) { filterTable(); }
         });
         
         // Buttons
@@ -99,7 +120,9 @@ public class AttendancePage extends JFrame implements ActionListener {
         gbc.gridx = 7; gbc.gridy = 0; controlPanel.add(Box.createHorizontalStrut(20), gbc);
         
         gbc.gridx = 8; gbc.gridy = 0; controlPanel.add(searchLabel, gbc);
-        gbc.gridx = 9; gbc.gridy = 0; controlPanel.add(searchField, gbc);
+        gbc.gridx = 9; gbc.gridy = 0; gbc.fill = GridBagConstraints.HORIZONTAL; gbc.weightx = 1.0;
+        controlPanel.add(searchField, gbc);
+        gbc.weightx = 0; gbc.fill = GridBagConstraints.NONE;
         
         gbc.gridx = 10; gbc.gridy = 0; controlPanel.add(Box.createHorizontalStrut(20), gbc);
         
@@ -113,11 +136,11 @@ public class AttendancePage extends JFrame implements ActionListener {
         controlPanel.add(summaryLabel, gbc);
         
         // Table setup
-        String[] columns = {"ID", "Student ID", "Student Name", "Department", "Status"};
+        String[] columns = {"Student ID", "Student Name", "Department", "Status"};
         tableModel = new DefaultTableModel(columns, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column == 4; // Only status column is editable
+                return column == 3; // Only status column is editable
             }
         };
         
@@ -125,19 +148,36 @@ public class AttendancePage extends JFrame implements ActionListener {
             @Override
             public Component prepareRenderer(TableCellRenderer renderer, int row, int column) {
                 Component c = super.prepareRenderer(renderer, row, column);
-                if (column == 4) { // Status column
+                boolean isSelected = isRowSelected(row) && isColumnSelected(column);
+                
+                if (isSelected) {
+                    c.setBackground(new Color(51, 122, 183)); // Darker blue for selection
+                    c.setForeground(Color.WHITE);
+                } else if (column == 3) { // Status column
                     String status = getValueAt(row, column).toString();
                     if ("Present".equals(status)) {
                         c.setBackground(new Color(200, 255, 200));
+                        c.setForeground(Color.BLACK);
                     } else if ("Absent".equals(status)) {
                         c.setBackground(new Color(255, 200, 200));
+                        c.setForeground(Color.BLACK);
                     } else if ("Late".equals(status)) {
                         c.setBackground(new Color(255, 255, 150));
+                        c.setForeground(Color.BLACK);
                     }
                 } else {
-                    c.setBackground(Color.WHITE);
+                    c.setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 248, 248));
+                    c.setForeground(Color.BLACK);
                 }
                 return c;
+            }
+            
+            @Override
+            public void changeSelection(int row, int column, boolean toggle, boolean extend) {
+                super.changeSelection(row, column, toggle, extend);
+                if (row != -1) {
+                    scrollRectToVisible(getCellRect(row, column, true));
+                }
             }
         };
         
@@ -147,13 +187,20 @@ public class AttendancePage extends JFrame implements ActionListener {
         attendanceTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         
         // Add status combo box renderer and editor
-        TableColumn statusColumn = attendanceTable.getColumnModel().getColumn(4);
+        TableColumn statusColumn = attendanceTable.getColumnModel().getColumn(3);
         JComboBox<String> statusCombo = new JComboBox<>(new String[]{"Present", "Absent", "Late"});
         statusColumn.setCellEditor(new DefaultCellEditor(statusCombo));
         
-        // Initialize row sorter
+        // Initialize row sorter with custom row filter for search
         sorter = new TableRowSorter<>(tableModel);
         attendanceTable.setRowSorter(sorter);
+        
+        // Set up search functionality
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) { filterTable(); }
+            public void removeUpdate(DocumentEvent e) { filterTable(); }
+            public void changedUpdate(DocumentEvent e) { filterTable(); }
+        });
         
         JScrollPane scrollPane = new JScrollPane(attendanceTable);
         scrollPane.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
@@ -223,7 +270,7 @@ public class AttendancePage extends JFrame implements ActionListener {
             
             // Get all students for the selected date
             String query = "SELECT s.id as student_id, s.name, s.department, " +
-                         "COALESCE(a.status, 'Absent') as status, a.id as attendance_id " +
+                         "COALESCE(a.status, 'Absent') as status " +
                          "FROM students s " +
                          "LEFT JOIN attendance a ON s.id = a.student_id AND a.date = ? " +
                          "ORDER BY s.department, s.name";
@@ -238,11 +285,8 @@ public class AttendancePage extends JFrame implements ActionListener {
                 String name = rs.getString("name");
                 String department = rs.getString("department");
                 String status = rs.getString("status");
-                int attendanceId = rs.getInt("attendance_id");
                 
-                // Store attendance ID in the first column (hidden)
-                tableModel.addRow(new Object[]{attendanceId > 0 ? attendanceId : null, 
-                                             studentId, name, department, status});
+                tableModel.addRow(new Object[]{studentId, name, department, status});
             }
             
             // Update summary
@@ -270,36 +314,42 @@ public class AttendancePage extends JFrame implements ActionListener {
             int inserted = 0;
             
             for (int row = 0; row < tableModel.getRowCount(); row++) {
-                Integer attendanceId = (Integer) tableModel.getValueAt(row, 0);
-                String studentId = (String) tableModel.getValueAt(row, 1);
-                String status = (String) tableModel.getValueAt(row, 4);
+                String studentId = (String) tableModel.getValueAt(row, 0);
+                String status = (String) tableModel.getValueAt(row, 3);
                 
                 // Get student ID from the database using student ID
                 String studentDbId = getStudentId(studentId);
                 if (studentDbId == null) continue;
                 
-                if (attendanceId != null) {
-                    // Update existing attendance
-                    String updateQuery = "UPDATE attendance SET status = ? WHERE id = ?";
-                    try (PreparedStatement pst = connection.prepareStatement(updateQuery)) {
-                        pst.setString(1, status);
-                        pst.setInt(2, attendanceId);
-                        updated += pst.executeUpdate();
-                    }
-                } else {
-                    // Insert new attendance
-                    String insertQuery = "INSERT INTO attendance (student_id, date, status) VALUES (?, ?, ?)";
-                    try (PreparedStatement pst = connection.prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS)) {
-                        pst.setString(1, studentDbId);
-                        pst.setString(2, selectedDate);
-                        pst.setString(3, status);
-                        pst.executeUpdate();
-                        
-                        // Get the generated attendance ID
-                        try (ResultSet rs = pst.getGeneratedKeys()) {
-                            if (rs.next()) {
-                                tableModel.setValueAt(rs.getInt(1), row, 0);
-                                inserted++;
+                // Check if attendance record already exists
+                String query = "SELECT id FROM attendance WHERE student_id = ? AND date = ?";
+                try (PreparedStatement pst = connection.prepareStatement(query)) {
+                    pst.setString(1, studentDbId);
+                    pst.setString(2, selectedDate);
+                    try (ResultSet rs = pst.executeQuery()) {
+                        if (rs.next()) {
+                            // Update existing attendance
+                            String updateQuery = "UPDATE attendance SET status = ? WHERE id = ?";
+                            try (PreparedStatement updatePst = connection.prepareStatement(updateQuery)) {
+                                updatePst.setString(1, status);
+                                updatePst.setInt(2, rs.getInt("id"));
+                                updated += updatePst.executeUpdate();
+                            }
+                        } else {
+                            // Insert new attendance
+                            String insertQuery = "INSERT INTO attendance (student_id, date, status) VALUES (?, ?, ?)";
+                            try (PreparedStatement insertPst = connection.prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS)) {
+                                insertPst.setString(1, studentDbId);
+                                insertPst.setString(2, selectedDate);
+                                insertPst.setString(3, status);
+                                insertPst.executeUpdate();
+                                
+                                // Get the generated attendance ID
+                                try (ResultSet insertRs = insertPst.getGeneratedKeys()) {
+                                    if (insertRs.next()) {
+                                        inserted++;
+                                    }
+                                }
                             }
                         }
                     }
@@ -361,7 +411,7 @@ public class AttendancePage extends JFrame implements ActionListener {
         int late = 0;
         
         for (int i = 0; i < total; i++) {
-            String status = tableModel.getValueAt(i, 4).toString();
+            String status = tableModel.getValueAt(i, 3).toString();
             switch (status) {
                 case "Present": present++; break;
                 case "Absent": absent++; break;
@@ -369,41 +419,48 @@ public class AttendancePage extends JFrame implements ActionListener {
             }
         }
         
-        summaryLabel.setText(String.format("Total: %d | Present: %d | Absent: %d | Late: %d", 
-            total, present, absent, late));
+        summaryLabel.setText(String.format("Total: %d | Present: %d | Absent: %d | Late: %d", total, present, absent, late));
     }
-    
+            
     private void filterTable() {
-        String searchText = searchField.getText().toLowerCase();
-        String selectedDept = (String) departmentFilter.getSelectedItem();
+        String searchText = searchField.getText().trim().toLowerCase();
+        String departmentFilterText = departmentFilter.getSelectedItem().toString();
         
-        RowFilter<TableModel, Integer> filter = new RowFilter<TableModel, Integer>() {
-            @Override
-            public boolean include(Entry<? extends TableModel, ? extends Integer> entry) {
-                TableModel model = entry.getModel();
-                int row = entry.getIdentifier();
-                
-                // Check department filter
-                String dept = model.getValueAt(row, 3).toString(); // Department is at index 3
-                if (!"All".equals(selectedDept) && !dept.equals(selectedDept)) {
+        // Create a list to hold all filters
+        List<RowFilter<Object, Object>> filters = new ArrayList<>();
+        
+        // Apply department filter if not "All"
+        if (!departmentFilterText.equals("All")) {
+            filters.add(RowFilter.regexFilter("(?i)" + Pattern.quote(departmentFilterText), 2));
+        }
+        
+        // Apply search text filter if not empty
+        if (!searchText.isEmpty()) {
+            RowFilter<Object, Object> searchFilter = new RowFilter<Object, Object>() {
+                @Override
+                public boolean include(Entry<? extends Object, ? extends Object> entry) {
+                    // Search in Student ID (0), Name (1), and Department (2)
+                    for (int i = 0; i <= 2; i++) {
+                        String cellValue = entry.getValue(i) != null ? 
+                            entry.getValue(i).toString().toLowerCase() : "";
+                        if (cellValue.contains(searchText)) {
+                            return true;
+                        }
+                    }
                     return false;
                 }
-                
-                // Check search text
-                if (searchText.isEmpty()) {
-                    return true;
-                }
-                
-                // Search in ID, Name, and Department
-                String id = model.getValueAt(row, 1).toString().toLowerCase();
-                String name = model.getValueAt(row, 2).toString().toLowerCase();
-                return id.contains(searchText) || 
-                       name.contains(searchText) || 
-                       dept.toLowerCase().contains(searchText);
-            }
-        };
+            };
+            filters.add(searchFilter);
+        }
         
-        sorter.setRowFilter(filter);
+        // Apply all filters
+        try {
+            sorter.setRowFilter(filters.isEmpty() ? null : RowFilter.andFilter(filters));
+        } catch (Exception e) {
+            sorter.setRowFilter(null);
+        }
+        
+        updateSummary();
     }
             
     // This method is called when the search field is updated
